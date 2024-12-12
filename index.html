@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<!-- orbital ellipse projection v1.0 by luke-la -->
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="stylesheet" href="./res/styles.css" />
+  <title>Orbit Visualizer</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+</head>
+
+<body>
+  <h1>Orbital Ellipse Projection</h1>
+  <div id="app">
+    <button @click="reset()">Restore Default Values</button>
+    <form id="controls">
+      <!-- inputs for orbital elements -->
+      <label for="smaxis">
+        <abbr title="Semi-Major Axis [0.5-1.5]">a</abbr>:
+      </label>
+      <input id="smaxis" v-model="orbit.a" type="number" min="0.5" max="1.5" step="0.1" required="true" />
+
+      <label for="ecc">
+        <abbr title="Eccentricity [0-0.95]">e</abbr>:
+      </label>
+      <input id="ecc" v-model="orbit.e" type="number" min="0" max="0.95" step="0.05" required="true" />
+
+      <label for="incl">
+        <abbr title="Inclination [0-180]">i</abbr>:
+      </label>
+      <input id="incl" v-model="orbit.i" type="number" min="0" max="180" step="1" required="true" />
+
+      <label for="loan">
+        <abbr title="Longitude of the Accending Node [0-360]">&Omega;</abbr>:
+      </label>
+      <input id="loan" v-model="orbit.LoAN" type="number" min="0" max="360" step="1" required="true" />
+
+      <label for="aop">
+        <abbr title="Argument of Periapsis [0-360]">&omega;</abbr>:
+      </label>
+      <input id="aop" v-model="orbit.AoP" type="number" min="0" max="360" step="1" required="true" />
+
+      <label for="trua">
+        <abbr title="True Anomaly [0-360]">&nu;</abbr>:
+      </label>
+      <input id="trua" v-model="orbit.TruA" type="number" min="0" max="360" step="1" required="true" />
+
+      <hr />
+
+      <!-- inputs for display controls -->
+      <label for="majoraxis" class="checkbox" :class="{ 'checked': toggles.showMajor }">
+        Major Axis
+      </label>
+      <input id="majoraxis" v-model="toggles.showMajor" type="checkbox" />
+      <br />
+
+      <label for="minoraxis" class="checkbox" :class="{ 'checked': toggles.showMinor }">
+        Minor Axis
+      </label>
+      <input id="minoraxis" v-model="toggles.showMinor" type="checkbox" />
+      <br />
+
+      <label for="showIncl" class="checkbox" :class="{ 'checked': toggles.showIncl }">
+        Incline Axis
+      </label>
+      <input id="showIncl" v-model="toggles.showIncl" type="checkbox" />
+      <br />
+
+      <label for="refPlane" class="checkbox" :class="{ 'checked': toggles.refPlane }">
+        Reference Plane
+      </label>
+      <input id="refPlane" v-model="toggles.refPlane" type="checkbox" />
+      <br />
+
+      <label for="orbPlane" class="checkbox" :class="{ 'checked': toggles.orbitalPlane }">
+        Orbital Plane
+      </label>
+      <input id="orbPlane" v-model="toggles.orbitalPlane" type="checkbox" />
+      <br />
+
+      <label for="grid" class="checkbox" :class="{ 'checked': toggles.grid }">
+        Grid
+      </label>
+      <input id="grid" v-model="toggles.grid" type="checkbox" />
+      <br />
+
+      <label for="line" class="checkbox" :class="{ 'checked': toggles.line }">
+        Line to Object
+      </label>
+      <input id="line" v-model="toggles.line" type="checkbox" />
+      <br />
+    </form>
+    <canvas id="drawable" width="500" height="500"></canvas>
+  </div>
+  <!-- CDN vue app that links to the #app div -->
+  <script src="./js/app.js"></script>
+
+  <!-- detail writeup on how the app works -->
+  <div id="details">
+    <h2>Details</h2>
+    <p>
+      This program generates an orthographic projection of an orbital ellipse
+      from Keplerian orbital elements.
+    </p>
+
+    <h3>Orbital Elements</h3>
+    <p>
+      Unique orbits may be defined using the following orbital elements
+      variables, known as Keplerian elements.
+    </p>
+    <dl>
+      <dt>a - Semi-Major Axis</dt>
+      <dd>
+        The Semi-Major Axis is half of the Major Axis, which is the distance
+        greatest distance between two points on the ellipse.
+      </dd>
+      <dt>e - Eccentricity</dt>
+      <dd>
+        The Eccentricity can be used to define the ratio between the Major Axis
+        and the Minor Axis.
+      </dd>
+      <dt>i - Inclination</dt>
+      <dd>
+        The inclination of the orbital plane to the reference plane as measured
+        at asscending node.
+      </dd>
+      <dt>&Omega; - Longitude of the Accending Node</dt>
+      <dd>
+        The angle of rotation between the accending node and the reference
+        direction along the reference plane.
+      </dd>
+      <dt>&omega; - Argument of Periapsis</dt>
+      <dd>
+        The angle of the ellipse measured from the ascending node to the
+        periapsis along the orbial plane.
+      </dd>
+      <dt>&nu; - True Anomaly</dt>
+      <dd>
+        The true anomaly defines the position of the orbiting body as an angle
+        between it's current position and the periapsis as seen from the
+        focus.
+      </dd>
+    </dl>
+    <p>
+      More on Keplerian elements can be found at
+      <a href="https://en.wikipedia.org/wiki/Orbital_elements">
+        Wikipedia - Orbital Elements
+      </a>
+    </p>
+
+    <h3>Projection Mathmatics</h3>
+    <p>
+      To project the orbital ellipse we will generate a number of points on an
+      appropriately shaped ellipse and applying trasformations to those points
+      to account for all orbital elements.
+    </p>
+
+    <h4>Getting a point</h4>
+    <p>
+      For a given angle in degrees, x and y can be calculated with the
+      following equations:
+    </p>
+<pre>
+x = b &middot; sin(t)
+y = a &middot; cos(t) - c
+
+where 
+t = angle &middot; (&pi; / 180)
+b = a &middot; &Sqrt;(1 - e<sup>2</sup>)
+c = a &middot; e
+</pre>
+    <p>Notes:</p>
+    <ul>
+      <li>b is the semi-minor axis of the elipse</li>
+      <li>c is the focal length</li>
+      <li>
+        subtracting c from y translates the ellipse so a focal point is at
+        (0,0)
+      </li>
+    </ul>
+    <p>Example:</p>
+<pre>
+given a = 1.2, e = 0.2, angle = 45&deg;
+
+t = 45 &middot; (&pi; / 180)
+<b>  = &pi; / 4</b>
+
+b = 1.2 &middot; &Sqrt;(1 - 0.2<sup>2</sup>)
+= 1.2 &middot; &Sqrt;(0.96)
+<b>  = ~1.1757</b>
+
+c = 1.2 &middot; 0.2
+<b>  = 0.24</b>
+
+x = ~1.1757 &middot; sin(&pi; / 4)
+= ~1.1757 &middot; ~0.7071
+<b>  = ~0.8313</b>
+
+y = 1.2 &middot; cos(&pi; / 4) - 0.24
+= 1.2 &middot; ~0.7071
+<b>  = ~0.8485</b>
+
+The point is <b>(~0.8313, ~0.8485)</b>
+</pre>
+
+    <h4>Transformations</h4>
+    <p>
+      The order in which the transofrmations are applied is important, because
+      the screen the ellipse is projected onto is an aproximation of the
+      reference plane of the orbit. Some of the orbital elements work relative
+      to the reference plane and other elements work relative to the orbital
+      plane.
+    </p>
+    <p>
+      The correct order of transformations requires that any adjustments to
+      the orbital plane happen before it is positioned relative to the
+      reference plane.
+    </p>
+    <ol>
+      <li>
+        <p>Argument of Periapsis</p>
+        <p>
+          The following is the simplified form of a rotation matrix
+          multiplication:
+        </p>
+<pre>
+x = x &middot; cos(t) + y &middot; sin(t)
+y = x &middot; -sin(t) + y &middot; cos(t)
+
+where
+t = ω &middot; (&pi; / 180)
+</pre>
+        <p>Notes:</p>
+        <ul>
+          <li>
+            The sine in the y equation is negated because orbital elements are
+            typically applied counter clockwise when viewed from above
+          </li>
+        </ul>
+      </li>
+
+      <li>
+        <p>Inclination</p>
+        <p>To compute an appropriate skew we multiply.</p>
+<pre>
+x = x &middot; cos(i &middot; (&pi; / 180))
+</pre>
+        <p>Notes:</p>
+        <ul>
+          <li>Cosine is used because it returns 1 when t is 0</li>
+          <li>
+            x is used rather than y because the inclination is measured
+            relative to the an axis which, when ω = 0, is co-linear to the y
+            axis
+          </li>
+        </ul>
+      </li>
+
+      <li>
+        <p>Longitude of the Asscending Node</p>
+        <p>
+          To apply this rotation we replace ω with Ω in the rotation
+          equations:
+        </p>
+<pre>
+x = x &middot; cos(t) + y &middot; sin(t)
+y = x &middot; -sin(t) + y &middot; cos(t)
+
+where 
+t = Ω &middot; (&pi; / 180)
+</pre>
+      </li>
+    </ol>
+
+    <h4>Body Position</h4>
+    <p>
+      The equation we use to get points on the ellipse returns the point at a
+      given angle from the center of the ellipse. This angle is analogous to
+      eccentric anomaly. The true anomaly reperents a given angle from the
+      focus, so to correctly place the orbiting body, it must be converted.
+    </p>
+    <p>
+      More on True anomaly's relation to Eccentric can be found at
+      <a href="https://en.wikipedia.org/wiki/True_anomaly">
+        Wikipedia - True Anomaly
+      </a>
+    </p>
+    <p>
+      To get the eccentric anomaly (E) in radians, we apply the following
+      equation:
+    </p>
+<pre>
+E = t + 2arctan(&beta;sin(t) / (1 - &beta;cos(t))) + &pi;
+
+where
+t = (&nu; + 180) &middot; (&pi; / 180);
+&beta; = e / (1 + &Sqrt;(1 - e<sup>2</sup>))
+</pre>
+    <p>Notes:</p>
+    <ul>
+      <li>
+        &pi; is added to E so that the angles are relative to the focus at 
+        the origin.
+      </li>
+      <li>
+        180&deg; is added to &nu; before it is converted to radians to offset
+        the addition of &pi; to E, thereby making 0&deg; the periapsis.
+      </li>
+    </ul>
+    <h3>Drawing to a Canvas</h3>
+    <p>
+      To use the projection mathmatics we have established to plot an ellipse
+      on an HTML canvas, we can loop through angles from 0&deg; to 360&deg;
+      and get transformed points for those angles. If we multiply the
+      generated points by a scaling factor, we can treat them as points on an
+      HTML canvas element draw a path between them.
+    </p>
+    <p>
+      The fidelity of such a polygon obviously depends on the step size. One
+      point per degree appears smooth at the sizes this application utilizes.
+    </p>
+    <p>
+      Specific points on the ellipse can be calculated and connected with
+      lines for improving readability of the projection, such as the Major
+      Axis, Minor Axis and the axis which the orbital plane is inclined around
+      (above referred to as the Inclination Axis).
+    </p>
+    <p>
+      By passing other coordinates through the same transformation functions
+      as the ellipse points, points outside of the ellipse may be plotted. An
+      example of this would the four conrners of the orbital plane.
+    </p>
+  </div>
+
+  <footer>
+    <p>
+      Made by Luke (<a href="https://github.com/luke-la">luke-la</a>) |
+      Version 1.0 | Licensed under the MIT License
+    </p>
+  </footer>
+</body>
+
+</html>

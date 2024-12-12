@@ -1,0 +1,140 @@
+/* orbital ellipse projection v1.0 by luke-la */
+/* general styling */
+html {
+  background-color: lightslategray;
+}
+body {
+  width: 600px;
+  margin: 0 auto;
+  padding: 10px 50px;
+  background-color: #EEE;
+}
+footer {
+  text-align: center;
+  font-style: italic;
+  font-size: smaller;
+  padding: 10px;
+}
+h1:first-child{
+  margin-top: 0;
+}
+h1, h2 {
+  border-bottom: 3px solid black;
+}
+h3, h4 {
+  text-decoration: underline 2px solid black;
+}
+
+/* styling for the app div and contents  */
+#app {
+  width: 500px;
+  margin: 0 auto;
+}
+button {
+  display: block;
+  margin: 5px auto;
+  padding: 2px 10px;
+
+  outline: none;
+  border: 2px solid slategray;
+  border-radius: 5px;
+  background-color: slategray;
+  color: #EEE
+}
+button:hover {
+  border: 2px solid lightslategray;
+  background-color: lightslategray;
+}
+form {
+  border-radius: 30px;
+  padding: 10px;
+}
+form:invalid {
+  background: linear-gradient(#F99, transparent);
+}
+label:not(.checkbox) {
+  padding: 0px 5px;
+}
+abbr {
+  text-decoration: underline dotted slategray;
+  font-style: italic;
+  font-weight: bold;
+}
+input[type="number"] {
+  outline: none;
+  width: 3.25em;
+  border: 2px solid white;
+  border-radius: 3px;
+}
+input:focus {
+  border: 2px solid black;
+}
+input:invalid {
+  border: 2px solid white;
+  background-color: red;
+  color: white;
+  font-weight: bold;
+}
+form input[type="checkbox"] {
+  margin-left: 8px;
+  margin-right: 30px;
+}
+form label.checkbox {
+  border-radius: 3px;
+  padding-left: 30px;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+form label.checkbox::after {
+  width: 1.6em;
+  height: 1.6em;
+  position: absolute;
+  display: inline;
+  translate: 0.6em 0.15em;
+  border-radius: 3px;
+  font-size: x-small;
+  font-weight: bold;
+  text-align: center;
+  background: white;
+  color: #EEE;
+  content: ''
+}
+form label.checkbox.checked::after {
+  background: slategray;
+  content: '✓'
+}
+#drawable {
+  display: block;
+  margin: 0 auto;
+  border-radius: 30px;
+  background-color: white;
+}
+#drawtime {
+  font-style: italic;
+  font-size: smaller;
+}
+
+/* styling for the details div and contents */
+#details {
+  text-align: justify;
+}
+dl, ol, ul, pre {
+  padding: 0px 40px;
+}
+dt {
+  font-weight: bold;
+}
+ul {
+  margin-top: -15px;
+}
+ol {
+  padding: 0px 40px
+}
+a {
+  color: slategray;
+}
+pre {
+  padding: 0px 40px;
+}
